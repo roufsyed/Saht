@@ -1,0 +1,22 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme with green and red colors. -->
+    <style name="Theme.Saht" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!--Text Color-->
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorOnSecondary">@color/dark_grey</item>
+
+        <!-- Primary brand color (Green). -->
+        <item name="colorPrimary">@color/green_500</item>
+        <item name="colorPrimaryVariant">@color/green_700</item>
+
+        <!-- Secondary brand color (Red). -->
+        <item name="colorSecondary">@color/red_500</item>
+        <item name="colorSecondaryVariant">@color/red_700</item>
+
+        <!-- Status bar color (Green Variant). -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:navigationBarColor">?attr/colorPrimary</item>
+
+        <!-- Customize any additional theme properties below. -->
+    </style>
+</resources>

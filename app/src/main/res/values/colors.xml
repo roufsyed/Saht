@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+
+
+    <!-- Green shades -->
+    <color name="green_500">#4CAF50</color>
+    <color name="green_700">#388E3C</color>
+
+    <!-- Red shades -->
+    <color name="red_500">#F44336</color>
+    <color name="red_700">#D32F2F</color>
+
+    <color name="light_grey">#D3D3D3</color>
+    <color name="dark_grey">#A9A9A9</color>
+
+    <color name="soft_blue">#6488EA</color>
+    <color name="soft_red">#F47174</color>
+
+    <color name="transparent">#00000000</color>
+
+    <!-- Material EditText Border color-->
+    <color name="et_border_green_700">#388E3C</color>
+
+    <!-- color based on weight category -->
+    <color name="underweight_color">#F44336</color>  <!-- Red -->
+    <color name="normal_color">#4CAF50</color>      <!-- Green -->
+    <color name="overweight_color">#FFFF00</color>   <!-- Yellow -->
+    <color name="obesity_color">#F44336</color>      <!-- Red -->
+
+    <!-- history button colors -->
+    <color name="history_btn_dark">#D3D3D3</color>  <!-- Red -->
+    <color name="history_btn_light">#D3D3D3</color>  <!-- Red -->
+
+    <!-- EditText border colors -->
+    <color name="edittext_border_dark">#A9A9A9</color>  <!-- Red -->
+    <color name="edittext_border_light">#FF000000</color>  <!-- Red -->
+
+</resources>

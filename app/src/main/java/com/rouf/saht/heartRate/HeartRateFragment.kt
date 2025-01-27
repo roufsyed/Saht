@@ -1,0 +1,321 @@
+package com.rouf.saht.heartRate
+
+import android.Manifest
+import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.net.Uri
+import android.os.Bundle
+import android.os.CountDownTimer
+import android.provider.Settings
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.rouf.saht.R
+import com.rouf.saht.common.model.HeartRateMonitorSettings
+import com.rouf.saht.databinding.FragmentHeartRateBinding
+import com.rouf.saht.setting.SettingsViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import io.reactivex.disposables.CompositeDisposable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import net.kibotu.heartrateometer.HeartRateOmeter
+
+@AndroidEntryPoint
+class HeartRateFragment : Fragment() {
+
+    private val TAG = HeartRateFragment::class.java.simpleName
+    private var _binding: FragmentHeartRateBinding? = null
+    private val binding get() = _binding!!
+
+    private val permissions = arrayOf(Manifest.permission.CAMERA)
+    private var subscription: CompositeDisposable? = null
+    private lateinit var lineChart: LineChart
+    private var bpmEntries = mutableListOf<Entry>()  // List to hold BPM entries for the graph
+
+    private lateinit var settingsViewModel: SettingsViewModel
+    private lateinit var heartRateMonitorSettings: HeartRateMonitorSettings
+
+    private var heartRateTimer: CountDownTimer? = null
+    private var isTimerStarted = false
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentHeartRateBinding.inflate(inflater, container, false)
+        settingsViewModel = ViewModelProvider(this@HeartRateFragment)[SettingsViewModel::class.java]
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            heartRateMonitorSettings = settingsViewModel.getHeartMonitorSettings()
+        }
+
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Initialize LineChart
+        lineChart = binding.lineChart
+
+        customizeChartAppearance()
+
+        if (!hasPermissions()) {
+            requestPermissions()
+        } else {
+            onClick()
+        }
+    }
+
+    private fun customizeChartAppearance() {
+        val textColorBasedOnDarkMode = if (isDarkMode())
+            Color.WHITE
+        else
+            Color.DKGRAY
+
+        // Customize X axis
+        val xAxis = lineChart.xAxis
+        xAxis.position = XAxis.XAxisPosition.BOTTOM
+        xAxis.setDrawGridLines(false)
+        xAxis.setDrawLabels(true)
+        xAxis.textColor = textColorBasedOnDarkMode
+
+        // Customize Y axis
+        val yAxis = lineChart.axisLeft
+        yAxis.setDrawGridLines(false)
+        yAxis.setDrawLabels(true)
+        yAxis.textColor = textColorBasedOnDarkMode
+
+        // Disable right Y axis
+        lineChart.axisRight.isEnabled = false
+
+        lineChart.description.isEnabled = false
+    }
+
+    private fun hasPermissions(): Boolean {
+        return permissions.all {
+            ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestPermissions() {
+        requestPermissions(permissions, PERMISSIONS_REQUEST_CODE)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                onClick()
+            } else {
+                showPermissionsDeniedDialog()
+            }
+        }
+    }
+
+    private fun showPermissionsDeniedDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Permissions Required")
+            .setMessage("Camera permissions are required to measure heart rate.")
+            .setPositiveButton("Settings") { _, _ ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", requireContext().packageName, null)
+                })
+            }
+            .setNegativeButton("Cancel") { _, _ -> activity?.finish() }
+            .show()
+    }
+
+    private fun onClick() {
+        binding.btnMeasure.setOnClickListener {
+            if (binding.btnMeasure.text == getString(R.string.start_monitoring)) {
+                // Active state
+                bpmEntries.clear()
+                initViewActiveState()
+                startHeartRateMonitoring()
+            } else {
+                // Inactive state
+                initViewInActiveState()
+                stopHeartRateMonitoring()
+                stopHeartRateMonitoringTimer()
+                stopCircularProgress()
+            }
+        }
+    }
+
+    private fun stopCircularProgress() {
+        binding.progressBpm.progress = 0
+        binding.progressBpm.isVisible = false
+    }
+
+    private fun initViewInActiveState() {
+        binding.btnMeasure.text = getString(R.string.start_monitoring)
+        binding.preview.isVisible = false
+        binding.tvFingerDetect.isVisible = false
+        binding.btnMeasure.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_button_cornered_solid_red)
+        binding.btnMeasure.backgroundTintList = ContextCompat.getColorStateList(requireContext(), R.color.green_500)
+    }
+
+    private fun initViewActiveState() {
+        binding.btnMeasure.text = getString(R.string.stop_monitoring)
+        binding.preview.isVisible = true
+        binding.tvFingerDetect.isVisible = true
+        binding.btnMeasure.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_button_cornered_solid_red)
+        binding.btnMeasure.backgroundTintList = ContextCompat.getColorStateList(requireContext(), R.color.red_500)
+    }
+
+    private fun startHeartRateMonitoring() {
+        subscription = CompositeDisposable()
+
+        Log.d(TAG, "startHeartRateMonitoring started with sensitivity: ${heartRateMonitorSettings.sensitivityLevel}")
+
+        val bpmUpdates = HeartRateOmeter()
+            /*
+            * TODO: add setting to set average after seconds
+            */
+            .withAverageAfterSeconds(heartRateMonitorSettings.sensitivityLevel.value)
+            .setFingerDetectionListener { detected -> onFingerChange(detected) }
+            .bpmUpdates(binding.preview)
+            .subscribe({ bpm ->
+                if (bpm.value > 0) {
+                    onBpm(bpm.value)
+
+                    if (!isTimerStarted)
+                        startHeartRateMonitoringTimer()
+                }
+            }, {
+                Log.e(TAG, "Error receiving BPM updates", it)
+            })
+
+        subscription?.add(bpmUpdates)
+        binding.btnMeasure.text = getString(R.string.stop_monitoring)
+    }
+
+    private fun stopHeartRateMonitoringTimer() {
+        heartRateTimer?.cancel() // Cancel the timer if it is running
+        heartRateTimer = null
+        isTimerStarted = false
+        Log.d(TAG, "Timer stopped.")
+    }
+
+    private fun startHeartRateMonitoringTimer() {
+        if (isTimerStarted) {
+            return
+        }
+
+        isTimerStarted = true
+        binding.progressBpm.max = heartRateMonitorSettings.duration - 1
+        val durationInMilliseconds = heartRateMonitorSettings.duration * 1000L
+        var i = 0
+
+        heartRateTimer = object : CountDownTimer(durationInMilliseconds, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                Log.d(TAG, "Time remaining: ${millisUntilFinished / 1000} seconds")
+                binding.progressBpm.isVisible = isTimerStarted
+
+                if (i <= heartRateMonitorSettings.duration) {
+                    binding.progressBpm.progress = i
+                    i++
+                }
+
+            }
+
+            override fun onFinish() {
+                stopHeartRateMonitoring()
+                initViewInActiveState()
+                stopCircularProgress()
+            }
+        }.start()
+    }
+
+    private fun stopHeartRateMonitoring() {
+        subscription?.dispose()
+        subscription = null
+        binding.btnMeasure.text = getString(R.string.start_monitoring)
+    }
+
+    private fun onBpm(bpm: Int) {
+        val bpmUnit = getString(R.string.bpm)
+        binding.tvHeartRate.text = "$bpm ${bpmUnit}"
+
+        val entry = Entry(bpmEntries.size.toFloat(), bpm.toFloat())
+        bpmEntries.add(entry)
+
+        updateGraph()
+    }
+
+    private fun updateGraph() {
+        val textColorBasedOnDarkMode = if (isDarkMode())
+            Color.WHITE
+        else
+            Color.DKGRAY
+
+        val dataSet = LineDataSet(bpmEntries, "Heart Rate (BPM)")
+
+        dataSet.mode = LineDataSet.Mode.CUBIC_BEZIER
+        dataSet.color = Color.RED
+        dataSet.lineWidth = 2f
+        dataSet.setDrawFilled(true)
+        dataSet.fillColor = Color.RED
+        dataSet.setDrawCircles(false)
+        dataSet.setDrawValues(false)
+
+
+        val lineData = LineData(dataSet)
+        lineChart.data = lineData
+        lineChart.legend.textColor = textColorBasedOnDarkMode
+        lineChart.setTouchEnabled(true)
+        lineChart.isDoubleTapToZoomEnabled = false
+
+        lineChart.invalidate()
+    }
+
+    private fun isDarkMode(): Boolean {
+        return resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
+
+    private fun onFingerChange(fingerDetected: Boolean) {
+        if (fingerDetected) {
+            binding.tvFingerDetect.text = "Finger Detected"
+        } else {
+            binding.tvFingerDetect.text = "No Finger"
+            stopHeartRateMonitoringTimer()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (subscription == null && hasPermissions()) {
+            onClick()
+        }
+    }
+
+    override fun onPause() {
+        stopHeartRateMonitoring()
+        super.onPause()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+    companion object {
+        private const val PERMISSIONS_REQUEST_CODE = 123
+    }
+}
