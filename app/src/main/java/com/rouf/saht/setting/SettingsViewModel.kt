@@ -67,7 +67,7 @@ class SettingsViewModel @Inject constructor(
         return PedometerSettings(
             stepGoal = 10000,
             unit = "steps",
-            sensitivityLevel = PedometerSensitivity.MEDIUM
+            sensitivityLevel = PedometerSensitivity.LOW
         )
     }
 

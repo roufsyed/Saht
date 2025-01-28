@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,6 +24,8 @@ import com.rouf.saht.R
 import com.rouf.saht.common.helper.BMIUtils
 import com.rouf.saht.databinding.FragmentPedometerBinding
 import com.rouf.saht.common.helper.Util
+import com.rouf.saht.common.model.PedometerSensitivity
+import com.rouf.saht.common.model.PedometerSettings
 import com.rouf.saht.common.model.PersonalInformation
 import com.rouf.saht.pedometer.service.PedometerForegroundService
 import com.rouf.saht.pedometer.viewModel.PedometerViewModel
@@ -38,13 +41,15 @@ class PedometerFragment : Fragment() {
 
     private val TAG = PedometerFragment::class.java.simpleName
     private lateinit var _binding: FragmentPedometerBinding
-    private val binding get() = _binding!!
+    private val binding get() = _binding
 
     private val ACTIVITY_RECOGNITION_PERMISSION_CODE = 123
     private val REQUEST_NOTIFICATION_PERMISSION: Int = 1
 
     private lateinit var pedometerViewModel: PedometerViewModel
     private lateinit var settingsViewModel: SettingsViewModel
+    private lateinit var pedometerSettings: PedometerSettings
+    private lateinit var pedometerSensitivity: PedometerSensitivity
     private var activeState: Boolean = false
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -54,11 +59,15 @@ class PedometerFragment : Fragment() {
     ): View {
 
         _binding = FragmentPedometerBinding.inflate(inflater, container, false)
-        val root: View = binding.root
-        setRetainInstance(true)
 
         pedometerViewModel = ViewModelProvider(this@PedometerFragment)[PedometerViewModel::class.java]
         settingsViewModel = ViewModelProvider(this@PedometerFragment)[SettingsViewModel::class.java]
+
+        lifecycleScope.launch {
+            pedometerSettings = settingsViewModel.getPedometerSettings()
+            pedometerSensitivity = pedometerSettings.sensitivityLevel
+            Log.d(TAG, "onCreate in lifecycleScope: pedometerSettings -> $pedometerSettings")
+        }
 
         activeState = pedometerViewModel.getActiveState()
 
@@ -66,12 +75,13 @@ class PedometerFragment : Fragment() {
         onClick()
         observers()
 
-        return root
+        return binding.root
     }
 
     private fun initViews() {
         val stateActive = pedometerViewModel.getActiveState()
-        val btnStartStop = binding.btnStartStop
+
+        setPedometerGoal()
 
         if (stateActive) {
             initViewActiveState()
@@ -79,7 +89,6 @@ class PedometerFragment : Fragment() {
             initViewInActiveState()
         }
 
-        setPedometerGoal()
     }
 
     private fun setBMI(personalInformation: PersonalInformation) {
@@ -185,9 +194,15 @@ class PedometerFragment : Fragment() {
         if (toggleText == "Start") {
             initViewActiveState()
             initiateForegroundService()
+            lifecycleScope.launch {
+                pedometerViewModel.updateStateActive(true)
+            }
         } else {
             initViewInActiveState()
             stopForegroundService()
+            lifecycleScope.launch {
+                pedometerViewModel.updateStateActive(false)
+            }
         }
     }
 
@@ -259,6 +274,7 @@ class PedometerFragment : Fragment() {
 
     private fun initiateForegroundService() {
         val startIntent = Intent(requireContext(), PedometerForegroundService::class.java)
+        startIntent.putExtra("sensitivity_level", pedometerSensitivity)
         ContextCompat.startForegroundService(requireContext(), startIntent)
     }
 

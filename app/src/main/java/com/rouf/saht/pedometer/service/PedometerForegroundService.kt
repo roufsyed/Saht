@@ -3,6 +3,7 @@ package com.rouf.saht.pedometer.service
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
@@ -13,28 +14,25 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import com.rouf.saht.common.helper.CalorieCalculator
 import com.rouf.saht.common.helper.NotificationHelper
 import com.rouf.saht.common.helper.Util
-import com.rouf.saht.common.model.HeartRateMonitorSettings
+import com.rouf.saht.common.model.PedometerSensitivity
 import com.rouf.saht.common.model.PedometerSettings
 import com.rouf.saht.pedometer.repository.PedometerRepository
-import com.rouf.saht.setting.SettingsViewModel
+import com.rouf.saht.setting.SettingRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
 
 @AndroidEntryPoint
-class PedometerForegroundService: Service(), SensorEventListener {
+class PedometerForegroundService(): Service(), SensorEventListener {
 
     companion object {
         private const val TAG = "PedometerForegroundService"
@@ -59,10 +57,9 @@ class PedometerForegroundService: Service(), SensorEventListener {
     private var stepOffset = 0 // Tracks the steps at reset
     private var isReset = false
 
-    @Inject
-    lateinit var pedometerRepository: PedometerRepository
-    private lateinit var pedometerSettings: PedometerSettings
-    private lateinit var settingsViewModel: SettingsViewModel
+    @Inject lateinit var pedometerRepository: PedometerRepository
+    @Inject lateinit var settingRepository: SettingRepository
+    lateinit var pedometerSensitivity: PedometerSensitivity
 
 
     init {
@@ -75,12 +72,25 @@ class PedometerForegroundService: Service(), SensorEventListener {
         Log.i(TAG, "Service created")
         Log.d(TAG, "onCreate: \n totalSteps: ${totalSteps} \n prevtotalSteps: ${previousTotalSteps} ")
 
-        settingsViewModel = ViewModelProvider(this@PedometerForegroundService)[SettingsViewModel::class.java]
+        serviceScope.launch {
+            val pedometerSettings = settingRepository.getPedometerSettings()
+            pedometerSensitivity = pedometerSettings?.sensitivityLevel ?: PedometerSensitivity.MEDIUM
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            pedometerSettings = settingsViewModel.pedometerSettings()
+            sensitivity = when (pedometerSensitivity) {
+                PedometerSensitivity.LOW -> {
+                    LOW_SENSITIVITY
+                }
+
+                PedometerSensitivity.MEDIUM -> {
+                    MEDIUM_SENSITIVITY
+                }
+
+                PedometerSensitivity.HIGH -> {
+                    HIGH_SENSITIVITY
+                }
+            }
+            Log.d(TAG, "onCreate: sensitivity: $sensitivity")
         }
-
 
 
         // Start foreground service immediately
@@ -90,7 +100,7 @@ class PedometerForegroundService: Service(), SensorEventListener {
 
 //        loadData()
         initializeStepSensor()
-        setSensitivity(LOW_SENSITIVITY)
+        setSensitivity(sensitivity)
     }
 
     private fun setSensitivity(newSensitivity: Int) {
@@ -109,7 +119,8 @@ class PedometerForegroundService: Service(), SensorEventListener {
             Log.e(TAG, "No step counter sensor available on this device")
             stopSelf()
         } else {
-            sensorManager?.registerListener(this, stepSensor, LOW_SENSITIVITY)
+            Log.d(TAG, "initializeStepSensor: sensitivity: $sensitivity")
+            sensorManager?.registerListener(this, stepSensor, sensitivity)
         }
     }
 

@@ -11,6 +11,7 @@ import com.rouf.saht.common.helper.NotificationHelper
 import com.rouf.saht.heartRate.repository.HeartRateRepository
 import com.rouf.saht.heartRate.repository.HeartRateRepositoryImpl
 import com.rouf.saht.pedometer.repository.PedometerRepository
+import com.rouf.saht.pedometer.service.PedometerForegroundService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

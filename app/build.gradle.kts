@@ -100,9 +100,7 @@ dependencies {
 
     // Heart rate
     implementation(files("libs/heartrateometer-release.aar"))
-//    implementation("com.github.kibotu:KalmanRx:1.2.1") {
-//        isTransitive = true
-//    }
+
     implementation("com.squareup.retrofit2:retrofit:2.9.0") // Retrofit version
     implementation("com.squareup.retrofit2:adapter-rxjava2:2.9.0")
 
