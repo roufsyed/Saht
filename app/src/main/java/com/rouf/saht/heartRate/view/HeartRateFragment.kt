@@ -1,7 +1,9 @@
-package com.rouf.saht.heartRate
+package com.rouf.saht.heartRate.view
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.Dialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -10,9 +12,12 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -24,9 +29,14 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.rouf.saht.R
+import com.rouf.saht.common.helper.TimeUtil
+import com.rouf.saht.common.model.HeartRateMonitorData
 import com.rouf.saht.common.model.HeartRateMonitorSettings
+import com.rouf.saht.databinding.BottomsheetSaveHeartRateBinding
 import com.rouf.saht.databinding.FragmentHeartRateBinding
+import com.rouf.saht.heartRate.viewModel.HeartRateViewModel
 import com.rouf.saht.setting.SettingsViewModel
+import com.rouf.saht.setting.view.PersonalInformationActivity
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.coroutines.Dispatchers
@@ -44,18 +54,25 @@ class HeartRateFragment : Fragment() {
     private var subscription: CompositeDisposable? = null
     private lateinit var lineChart: LineChart
     private var bpmEntries = mutableListOf<Entry>()  // List to hold BPM entries for the graph
+    private var heartRateMonitorData: HeartRateMonitorData = HeartRateMonitorData()
 
     private lateinit var settingsViewModel: SettingsViewModel
+    private lateinit var heartRateViewModel: HeartRateViewModel
     private lateinit var heartRateMonitorSettings: HeartRateMonitorSettings
 
     private var heartRateTimer: CountDownTimer? = null
     private var isTimerStarted = false
+
+    companion object {
+        private const val PERMISSIONS_REQUEST_CODE = 123
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHeartRateBinding.inflate(inflater, container, false)
         settingsViewModel = ViewModelProvider(this@HeartRateFragment)[SettingsViewModel::class.java]
+        heartRateViewModel = ViewModelProvider(this@HeartRateFragment)[HeartRateViewModel::class.java]
 
         lifecycleScope.launch(Dispatchers.IO) {
             heartRateMonitorSettings = settingsViewModel.getHeartMonitorSettings()
@@ -67,10 +84,7 @@ class HeartRateFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Initialize LineChart
-        lineChart = binding.lineChart
-
-        customizeChartAppearance()
+        customizeChartAppearance(binding.lineChart)
 
         if (!hasPermissions()) {
             requestPermissions()
@@ -79,7 +93,7 @@ class HeartRateFragment : Fragment() {
         }
     }
 
-    private fun customizeChartAppearance() {
+    private fun customizeChartAppearance(lineChart: LineChart) {
         val textColorBasedOnDarkMode = if (isDarkMode())
             Color.WHITE
         else
@@ -155,6 +169,11 @@ class HeartRateFragment : Fragment() {
                 stopCircularProgress()
             }
         }
+
+        binding.ivHistory.setOnClickListener {
+            val intent = Intent(activity, HeartRateHistoryActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun stopCircularProgress() {
@@ -179,6 +198,7 @@ class HeartRateFragment : Fragment() {
     }
 
     private fun startHeartRateMonitoring() {
+        lineChart = binding.lineChart
         subscription = CompositeDisposable()
 
         Log.d(TAG, "startHeartRateMonitoring started with sensitivity: ${heartRateMonitorSettings.sensitivityLevel}")
@@ -238,8 +258,18 @@ class HeartRateFragment : Fragment() {
                 stopHeartRateMonitoring()
                 initViewInActiveState()
                 stopCircularProgress()
+                setPartialHeartRateData()
+                showSaveBPMRecordDialog(requireContext(), heartRateMonitorData)
+                Log.d(TAG, "onFinish: heartRateMonitorData: $heartRateMonitorData")
             }
         }.start()
+    }
+
+    private fun setPartialHeartRateData() {
+        heartRateMonitorData.bpmGraphEntries = bpmEntries
+        heartRateMonitorData.sensitivityLevel = heartRateMonitorSettings.sensitivityLevel
+        heartRateMonitorData.duration = heartRateMonitorSettings.duration
+        heartRateMonitorData.timeStamp = TimeUtil.getCurrentTimestamp()
     }
 
     private fun stopHeartRateMonitoring() {
@@ -254,11 +284,14 @@ class HeartRateFragment : Fragment() {
 
         val entry = Entry(bpmEntries.size.toFloat(), bpm.toFloat())
         bpmEntries.add(entry)
+        lifecycleScope.launch {
+            heartRateMonitorData.bpm = bpm
+        }
 
-        updateGraph()
+        updateGraph(binding.lineChart)
     }
 
-    private fun updateGraph() {
+    private fun updateGraph(lineChart: LineChart) {
         val textColorBasedOnDarkMode = if (isDarkMode())
             Color.WHITE
         else
@@ -315,7 +348,75 @@ class HeartRateFragment : Fragment() {
         _binding = null
     }
 
-    companion object {
-        private const val PERMISSIONS_REQUEST_CODE = 123
+    fun showSaveBPMRecordDialog(context: Context, heartRateMonitorData: HeartRateMonitorData) {
+        Log.d(TAG, "showSaveBPMRecordDialog: $heartRateMonitorData")
+        val dialogBinding = BottomsheetSaveHeartRateBinding.inflate(LayoutInflater.from(context))
+        val dialog = Dialog(context, R.style.DialogThemeSize)
+
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(dialogBinding.root)
+        dialog.setCancelable(true)
+
+        val window: Window = dialog.window!!
+        val wlp = window.attributes
+        wlp.width = WindowManager.LayoutParams.MATCH_PARENT
+        wlp.height = WindowManager.LayoutParams.WRAP_CONTENT
+        wlp.gravity = Gravity.BOTTOM
+        wlp.windowAnimations = R.style.bottomSheetAnimation
+        window.attributes = wlp
+
+        dialogBinding.tvHeartRate.text = "${heartRateMonitorData.bpm} BPM"
+//        customizeChartAppearance(dialogBinding.lineChart)
+        updateGraph(dialogBinding.lineChart)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.chipWalking.setOnClickListener {
+            dialogBinding.etActivityPerformed.setText(
+                dialogBinding.chipWalking.text
+            )
+        }
+
+        dialogBinding.chipRunning.setOnClickListener {
+            dialogBinding.etActivityPerformed.setText(
+                dialogBinding.chipRunning.text
+            )
+        }
+
+        dialogBinding.chipCycling.setOnClickListener {
+            dialogBinding.etActivityPerformed.setText(
+                dialogBinding.chipCycling.text
+            )
+        }
+
+        dialogBinding.chipSex.setOnClickListener {
+            dialogBinding.etActivityPerformed.setText(
+                dialogBinding.chipSex.text
+            )
+        }
+
+        dialogBinding.btnSave.setOnClickListener() {
+            val activityPerformed: String = dialogBinding.etActivityPerformed.text.toString().trim()
+            Log.d(TAG, "showSaveBPMRecordDialog: activityPerformed: $activityPerformed")
+
+            if(activityPerformed.isNotEmpty() || activityPerformed.isNotBlank()) {
+                // Call viewModel save method to list of heart rate data
+                this.heartRateMonitorData.activityPerformed = dialogBinding.etActivityPerformed.text.toString()
+                Log.d(TAG, "showSaveBPMRecordDialog: heart rate data -> ${this.heartRateMonitorData}")
+
+                lifecycleScope.launch(Dispatchers.IO){
+                    heartRateViewModel.saveHeartRateMonitorData(heartRateMonitorData)
+                    Log.d(TAG, "showSaveBPMRecordDialog: dataList -> ${heartRateViewModel.getHeartRateMonitorData()}")
+                }
+
+                dialog.dismiss()
+            } else {
+                dialogBinding.etActivityPerformed.error = "Please provide valid activity"
+            }
+        }
+
+        dialog.show()
     }
 }

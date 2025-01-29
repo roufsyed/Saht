@@ -1,8 +1,12 @@
 package com.rouf.saht.heartRate.viewModel
 
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rouf.saht.common.model.HeartRateMonitorData
+import com.rouf.saht.heartRate.data.HeartRateData
 import com.rouf.saht.heartRate.data.HeartRateUiState
 import com.rouf.saht.heartRate.repository.MonitorHeartRateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,4 +50,22 @@ class HeartRateViewModel @Inject constructor(
         super.onCleared()
         monitoringJob?.cancel()
     }
+
+    private val _heartRateMonitorData = MutableLiveData<List<HeartRateMonitorData>>()
+    val heartRateMonitorData: LiveData<List<HeartRateMonitorData>> = _heartRateMonitorData
+
+    suspend fun saveHeartRateMonitorData(heartRateMonitorData: HeartRateMonitorData) {
+        monitorHeartRateUseCase.saveHeartRateMonitorData(heartRateMonitorData)
+    }
+
+    suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>? {
+        lateinit var data: List<HeartRateMonitorData>
+
+        viewModelScope.launch {
+            _heartRateMonitorData.value = monitorHeartRateUseCase.getHeartRateMonitorData() ?: listOf()
+        }
+
+        return monitorHeartRateUseCase.getHeartRateMonitorData() ?: listOf()
+    }
+
 }

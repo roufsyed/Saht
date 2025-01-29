@@ -7,13 +7,13 @@
 
     <fragment
         android:id="@+id/navigation_pedometer"
-        android:name="com.rouf.saht.pedometer.fragment.PedometerFragment"
+        android:name="com.rouf.saht.pedometer.view.PedometerFragment"
         android:label="@string/title_pedometer"
         tools:layout="@layout/fragment_pedometer" />
 
     <fragment
         android:id="@+id/navigation_heartRate"
-        android:name="com.rouf.saht.heartRate.HeartRateFragment"
+        android:name="com.rouf.saht.heartRate.view.HeartRateFragment"
         android:label="@string/title_heart_rate"
         tools:layout="@layout/fragment_heart_rate" />
 

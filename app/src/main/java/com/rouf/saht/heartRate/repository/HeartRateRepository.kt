@@ -1,6 +1,7 @@
 package com.rouf.saht.heartRate.repository
 
 import androidx.lifecycle.LifecycleOwner
+import com.rouf.saht.common.model.HeartRateMonitorData
 import com.rouf.saht.heartRate.data.HeartRateData
 import kotlinx.coroutines.flow.Flow
 
@@ -9,6 +10,9 @@ interface HeartRateRepository {
     suspend fun startHeartRateMonitoring(lifecycleOwner: LifecycleOwner)
     suspend fun stopHeartRateMonitoring()
     fun isMonitoring(): Boolean
+
+    suspend fun saveHeartRateMonitorData(heartRateMonitorData: HeartRateMonitorData)
+    suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>?
 
     companion object {
         const val MIN_CONFIDENCE_THRESHOLD = 0.7f

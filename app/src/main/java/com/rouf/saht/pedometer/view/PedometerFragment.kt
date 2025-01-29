@@ -1,4 +1,4 @@
-package com.rouf.saht.pedometer.fragment
+package com.rouf.saht.pedometer.view
 
 import android.Manifest
 import android.content.Context

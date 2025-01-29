@@ -8,6 +8,8 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
+import com.rouf.saht.common.model.HeartRateMonitorData
+import com.rouf.saht.common.model.HeartRateMonitorSettings
 import com.rouf.saht.heartRate.data.HeartRateData
 import com.rouf.saht.heartRate.exception.CameraException
 import com.rouf.saht.heartRate.sensor.CameraHeartRateAnalyzer
@@ -16,6 +18,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.paperdb.Paper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.flow.Flow
@@ -76,6 +79,16 @@ class HeartRateRepositoryImpl @Inject constructor(
     }
 
     override fun isMonitoring(): Boolean = camera != null
+
+    override suspend fun saveHeartRateMonitorData(heartRateMonitorData: HeartRateMonitorData): Unit = withContext(Dispatchers.IO) {
+        val currentData: MutableList<HeartRateMonitorData> = Paper.book().read("heart_rate_monitor_data") ?: mutableListOf()
+        currentData.add(heartRateMonitorData)
+        Paper.book().write("heart_rate_monitor_data", currentData)
+    }
+
+    override suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>? = withContext(Dispatchers.IO) {
+        return@withContext Paper.book().read("heart_rate_monitor_data")
+    }
 }
 
 

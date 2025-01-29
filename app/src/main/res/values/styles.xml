@@ -9,4 +9,22 @@
         <!-- Set button color -->
         <item name="android:textColorSecondary">#FFFFFF</item> <!-- White buttons -->
     </style>
+
+
+    <style name="CustomDialogTheme" parent="Theme.AppCompat.Dialog">
+        <!-- Dialog Background -->
+        <item name="android:background">@color/light_grey</item>
+        <!-- Minimum Width and Height -->
+        <item name="android:windowMinWidthMajor">100%</item>
+        <item name="android:windowMinWidthMinor">100%</item>
+        <!-- Center the dialog -->
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+
+    <style name="RoundedCornersShapeAppearance" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">10dp</item>
+    </style>
+
 </resources>
