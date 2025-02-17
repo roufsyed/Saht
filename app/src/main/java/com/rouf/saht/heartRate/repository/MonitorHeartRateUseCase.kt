@@ -21,4 +21,8 @@ class MonitorHeartRateUseCase @Inject constructor(
     suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>? {
         return repository.getHeartRateMonitorData()
     }
+
+    suspend fun deleteHeartRateMonitorDataByPosition(position: Int): Boolean {
+        return repository.deleteHeartRateMonitorDataByPosition(position)
+    }
 }

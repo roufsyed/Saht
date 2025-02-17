@@ -26,16 +26,22 @@ class HeartRateHistoryActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         heartRateViewModel = ViewModelProvider(this@HeartRateHistoryActivity)[HeartRateViewModel::class.java]
+
+        getHeartRateData()
+        observer()
+    }
+
+    private fun getHeartRateData() {
         lifecycleScope.launch {
             heartRateViewModel.getHeartRateMonitorData()
 
-            // Initialize RecyclerView and Adapter
             heartRateAdapter = HeartRateAdapter(this@HeartRateHistoryActivity)
             binding.rvHeartRate.layoutManager = LinearLayoutManager(this@HeartRateHistoryActivity)
             binding.rvHeartRate.adapter = heartRateAdapter
         }
+    }
 
-
+    private fun observer() {
         heartRateViewModel.heartRateMonitorData.observe(this@HeartRateHistoryActivity) { heartRateList ->
             if (heartRateList.isNotEmpty()) {
                 binding.llEmptyView.isVisible = false
@@ -44,5 +50,10 @@ class HeartRateHistoryActivity : AppCompatActivity() {
                 binding.llEmptyView.isVisible = true
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        getHeartRateData()
     }
 }

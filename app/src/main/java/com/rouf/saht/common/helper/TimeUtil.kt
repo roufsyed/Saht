@@ -22,4 +22,12 @@ object TimeUtil {
         val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")
         return localDateTime.format(formatter)
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun isSameDay(lastKnownTimeStamp: Long, presentTimeStamp: Long): Boolean {
+        val zoneId = ZoneId.systemDefault()
+        val date1 = Instant.ofEpochMilli(lastKnownTimeStamp).atZone(zoneId).toLocalDate()
+        val date2 = Instant.ofEpochMilli(presentTimeStamp).atZone(zoneId).toLocalDate()
+        return date1.isEqual(date2)
+    }
 }

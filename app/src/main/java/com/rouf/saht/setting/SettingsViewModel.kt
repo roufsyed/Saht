@@ -33,7 +33,7 @@ class SettingsViewModel @Inject constructor(
 
     fun getEmptyPersonalInformation(): PersonalInformation {
         return PersonalInformation(
-            name = "User Name",
+            name = "",
             gender = Gender.MALE,
             height = "0.0",
             heightUnit = "cm",

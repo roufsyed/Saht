@@ -98,7 +98,7 @@
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="40dp"
         android:layout_marginStart="16sp"
-        android:text="@string/pedometer_sensitivity"/>
+        android:text="@string/heart_rate_sensitivity"/>
 
     <SeekBar
         android:id="@+id/seekBar"

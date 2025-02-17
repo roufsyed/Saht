@@ -1,5 +1,9 @@
 package com.rouf.saht.common.helper
 
+import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -25,4 +29,41 @@ object Util {
         }
     }
 
+    fun formatDuration(milliseconds: Double): String {
+        val totalSeconds = milliseconds / 1000
+        val totalMinutes = totalSeconds / 60
+        val totalHours = totalMinutes / 60
+
+        return if (totalMinutes < 60) {
+            "${totalMinutes.toInt()} min"  // Show minutes (whole number)
+        } else {
+            "${roundToTwoDecimalPlaces(totalHours)} hr"  // Show hours with 2 decimal places
+        }
+    }
+
+    fun formatDistance(distanceMeters: Double): String {
+        return if (distanceMeters < 1000) {
+            "${distanceMeters.toInt()} m"  // Convert to meters (whole number)
+        } else {
+            "${roundToTwoDecimalPlaces(distanceMeters / 1000)} km"  // Convert to kilometers
+        }
+    }
+
+    fun roundToTwoDecimalPlaces(value: Double): String {
+        return String.format("%.2f", value)
+    }
+
+    fun boldSubstring(fullText: String, boldText: String): SpannableString {
+        val spannable = SpannableString(fullText)
+        val startIndex = fullText.indexOf(boldText)
+        if (startIndex != -1) {
+            spannable.setSpan(
+                StyleSpan(Typeface.BOLD),
+                startIndex,
+                startIndex + boldText.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        return spannable
+    }
 }

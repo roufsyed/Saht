@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rouf.saht.common.model.PedometerData
 import com.rouf.saht.pedometer.repository.PedometerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,8 @@ class PedometerViewModel @Inject constructor(
 
     val steps = pedometerRepository.steps
     val calories = pedometerRepository.calories
+    val distance = pedometerRepository.distance
+    val totalExerciseDuration = pedometerRepository.totalExerciseDuration
 
     suspend fun resetData() {
         pedometerRepository.resetData()
@@ -48,5 +51,17 @@ class PedometerViewModel @Inject constructor(
 
     suspend fun updatePedometerGoal(newGoal: Int) {
         _pedometerGoal.value = newGoal
+    }
+
+    suspend fun savePedometerDataToList() {
+        pedometerRepository.savePedometerDataToList()
+    }
+
+    suspend fun getPedometerListFromDB(): List<PedometerData>? {
+        return pedometerRepository.getPedometerlist()
+    }
+
+    suspend fun removePedometerDataFromList(position: Int): Boolean {
+        return pedometerRepository.deletePedometerDataByPosition(position)
     }
 }

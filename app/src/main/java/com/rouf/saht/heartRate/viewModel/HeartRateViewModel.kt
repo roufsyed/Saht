@@ -68,4 +68,8 @@ class HeartRateViewModel @Inject constructor(
         return monitorHeartRateUseCase.getHeartRateMonitorData() ?: listOf()
     }
 
+    suspend fun deleteHeartRateMonitorDataByPosition(position: Int): Boolean {
+        return monitorHeartRateUseCase.deleteHeartRateMonitorDataByPosition(position)
+    }
+
 }

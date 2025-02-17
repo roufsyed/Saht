@@ -22,11 +22,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.rouf.saht.R
 import com.rouf.saht.common.helper.BMIUtils
-import com.rouf.saht.databinding.FragmentPedometerBinding
 import com.rouf.saht.common.helper.Util
 import com.rouf.saht.common.model.PedometerSensitivity
 import com.rouf.saht.common.model.PedometerSettings
 import com.rouf.saht.common.model.PersonalInformation
+import com.rouf.saht.databinding.FragmentPedometerBinding
 import com.rouf.saht.pedometer.service.PedometerForegroundService
 import com.rouf.saht.pedometer.viewModel.PedometerViewModel
 import com.rouf.saht.setting.SettingsViewModel
@@ -75,13 +75,16 @@ class PedometerFragment : Fragment() {
         onClick()
         observers()
 
+        lifecycleScope.launch {
+            Log.d(TAG, "onDestroy: getPedometerListFromFB -> ${pedometerViewModel.getPedometerListFromDB()}")
+        }
+
         return binding.root
+
     }
 
     private fun initViews() {
         val stateActive = pedometerViewModel.getActiveState()
-
-        setPedometerGoal()
 
         if (stateActive) {
             initViewActiveState()
@@ -97,7 +100,7 @@ class PedometerFragment : Fragment() {
 
         // Validate height and weight
         if (heightStr.isNullOrEmpty() || weightStr.isNullOrEmpty()) {
-            binding.tvBmi.text = getString(R.string.invalid_data) // Use a string resource for localization
+            binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data) // Use a string resource for localization
             binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500)) // Set error color
             return
         }
@@ -122,20 +125,13 @@ class PedometerFragment : Fragment() {
             binding.tvBmi.setTextColor(categoryColor)
         } catch (e: Exception) {
             // Handle invalid data gracefully
-            binding.tvBmi.text = getString(R.string.invalid_data)
+            binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data)
             binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500))
         }
     }
 
-
-    private fun setPedometerGoal() {
-        val pedometerGoal = pedometerViewModel.pedometerGoal.value.toString()
-        binding.tvGoalSteps.text = "/$pedometerGoal Steps"
-    }
-
     override fun onResume() {
         super.onResume()
-        setPedometerGoal()
         lifecycleScope.launch {
             settingsViewModel.getPersonalInformation()
             settingsViewModel.getPedometerSettings()
@@ -150,11 +146,24 @@ class PedometerFragment : Fragment() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun onClick() {
         binding.btnStartStop.setOnClickListener {
-            Toast.makeText(activity, "Long tap to perform operation", Toast.LENGTH_SHORT).show()
+            if (isActivityRecognitionPermissionGranted()) {
+                if (isNotificationPermissionGranted()) {
+                    val btnState: String = binding.btnStartStop.text.toString()
+                    if (btnState == "Start") {
+                        togglePedometer()
+                    } else {
+                        Toast.makeText(activity, "Long press to stop", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    requestActivityNotificationPermission()
+                }
+            } else {
+                requestActivityRecognitionPermission()
+            }
         }
 
         binding.btnReset.setOnClickListener {
-            Toast.makeText(activity, "Long tap to reset steps", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, "Long press to reset steps", Toast.LENGTH_SHORT).show()
         }
 
         binding.btnStartStop.setOnLongClickListener {
@@ -254,22 +263,59 @@ class PedometerFragment : Fragment() {
             }
         }
 
-        settingsViewModel.personalInformation.observe(viewLifecycleOwner){ personalInformation ->
-            setBMI(personalInformation)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                pedometerViewModel.distance.collect { distanceCount->
+                    updateDistanceCount(distanceCount)
+                }
+            }
         }
 
-        settingsViewModel.pedometerSettings.observe(viewLifecycleOwner){ pedometerSettings ->
-            binding.tvGoalSteps.text = String.format("/ " + pedometerSettings.stepGoal.toString())
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                pedometerViewModel.totalExerciseDuration.collect { durationCount->
+                    updateDurationCount(durationCount)
+                }
+            }
         }
 
-    }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                settingsViewModel.personalInformation.observe(viewLifecycleOwner) { personalInformation ->
+                    setBMI(personalInformation)
+                }
+            }
+        }
 
-    private fun updateCalorieCount(caloriesBurnt: Double) {
-        binding.tvCalories.text = "Calories \uD83D\uDD25: ${Util.roundToTwoDecimalPlaces(caloriesBurnt.toFloat())}"
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                settingsViewModel.pedometerSettings.observe(viewLifecycleOwner) { pedometerSettings ->
+                    binding.tvGoalSteps.text = "/ ${Util.formatWithCommas(pedometerSettings.stepGoal)} steps"
+                }
+            }
+        }
     }
 
     private fun updateStepCount(stepCount: Int) {
         binding.tvStepsTaken.text = stepCount.toString()
+    }
+
+    private fun updateCalorieCount(caloriesBurnt: Double) {
+        val fullText = "Calories 🔥: \n${Util.roundToTwoDecimalPlaces(caloriesBurnt.toFloat())} kcal"
+        val dataToBold = "${Util.roundToTwoDecimalPlaces(caloriesBurnt.toFloat())} kcal"
+        binding.tvCalories.text = Util.boldSubstring(fullText, dataToBold)
+    }
+
+    private fun updateDistanceCount(distance: Double) {
+        val fullText = "Distance \uD83C\uDFC3\u200D\u2642\uFE0F: \n${Util.formatDistance(distance)}"
+        val dataToBold = Util.formatDistance(distance)
+        binding.tvDistance.text = Util.boldSubstring(fullText, dataToBold)
+    }
+
+    private fun updateDurationCount(durationInMilliSeconds: Double) {
+        val fullText = "Time ⏳: \n${Util.formatDuration(durationInMilliSeconds)}"
+        val dataToBold = Util.formatDuration(durationInMilliSeconds)
+        binding.tvDuration.text = Util.boldSubstring(fullText, dataToBold)
     }
 
     private fun initiateForegroundService() {
@@ -279,8 +325,15 @@ class PedometerFragment : Fragment() {
     }
 
     private fun stopForegroundService() {
+        savePedometerDataToList()
         val stopIntent = Intent(requireContext(), PedometerForegroundService::class.java)
         requireContext().stopService(stopIntent)
+    }
+
+    private fun savePedometerDataToList() {
+        lifecycleScope.launch {
+            pedometerViewModel.savePedometerDataToList()
+        }
     }
 
     private fun isActivityRecognitionPermissionGranted(): Boolean {

@@ -3,7 +3,6 @@ package com.rouf.saht.pedometer.service
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
@@ -16,9 +15,10 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.rouf.saht.common.helper.CalorieCalculator
 import com.rouf.saht.common.helper.NotificationHelper
+import com.rouf.saht.common.helper.TimeUtil
 import com.rouf.saht.common.helper.Util
+import com.rouf.saht.common.model.PedometerData
 import com.rouf.saht.common.model.PedometerSensitivity
-import com.rouf.saht.common.model.PedometerSettings
 import com.rouf.saht.pedometer.repository.PedometerRepository
 import com.rouf.saht.setting.SettingRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,7 +32,7 @@ import kotlin.math.roundToInt
 
 
 @AndroidEntryPoint
-class PedometerForegroundService(): Service(), SensorEventListener {
+class PedometerForegroundService : Service(), SensorEventListener {
 
     companion object {
         private const val TAG = "PedometerForegroundService"
@@ -52,14 +52,25 @@ class PedometerForegroundService(): Service(), SensorEventListener {
 
     private val calorieCalculator = CalorieCalculator(weightKg = 70f, isRunning = false)
 
+    private val pedometerData: PedometerData by lazy {
+        PedometerData(
+            steps = 0,
+            distanceMeters = 0.0,
+            caloriesBurned = 0.0,
+            startTime = System.currentTimeMillis(),
+            endTime = System.currentTimeMillis(),
+        )
+    }
+
     private var totalSteps = 0f
     private var previousTotalSteps = 0f
     private var stepOffset = 0 // Tracks the steps at reset
     private var isReset = false
+    private val defaultStepLength = 0.762
 
     @Inject lateinit var pedometerRepository: PedometerRepository
     @Inject lateinit var settingRepository: SettingRepository
-    lateinit var pedometerSensitivity: PedometerSensitivity
+    private lateinit var pedometerSensitivity: PedometerSensitivity
 
 
     init {
@@ -70,7 +81,7 @@ class PedometerForegroundService(): Service(), SensorEventListener {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service created")
-        Log.d(TAG, "onCreate: \n totalSteps: ${totalSteps} \n prevtotalSteps: ${previousTotalSteps} ")
+        Log.d(TAG, "onCreate: \n totalSteps: $totalSteps \n prevTotalSteps: $previousTotalSteps ")
 
         serviceScope.launch {
             val pedometerSettings = settingRepository.getPedometerSettings()
@@ -92,10 +103,9 @@ class PedometerForegroundService(): Service(), SensorEventListener {
             Log.d(TAG, "onCreate: sensitivity: $sensitivity")
         }
 
-
         // Start foreground service immediately
         val notificationHelper = NotificationHelper(this)
-        val initialNotification = notificationHelper.getServiceNotification("Steps: 0" ,"Calories Burnt: 0.0")
+        val initialNotification = notificationHelper.getServiceNotification("Steps: 0" ,"Calories Burnt: 0.0 kcal")
         startForeground(NOTIFICATION_ID, initialNotification)
 
 //        loadData()
@@ -136,6 +146,12 @@ class PedometerForegroundService(): Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             totalSteps = it.values[0]
+            Log.d(TAG, "onSensorChanged: it.values[0] -> ${it.values}")
+
+            val isSameDay = TimeUtil.isSameDay(
+                lastKnownTimeStamp = pedometerData.endTime,
+                presentTimeStamp = TimeUtil.getCurrentTimestamp()
+            )
 
             if (!isReset) {
                 // First run or no reset
@@ -147,23 +163,28 @@ class PedometerForegroundService(): Service(), SensorEventListener {
 
             val caloriesBurned = Util.roundToTwoDecimalPlaces(
                     calorieCalculator.calculateCalories(currentSteps)
-                )
+            )
 
             Log.d(TAG, "Steps taken: $currentSteps")
 
             // Update the notification with current step count
             val notificationHelper = NotificationHelper(this)
-            val notification = notificationHelper.getServiceNotification("Steps: $currentSteps", "Calories: $caloriesBurned")
+            val notification = notificationHelper.getServiceNotification("Steps: $currentSteps", "Calories: $caloriesBurned kcal")
 
             // Update existing notification instead of calling startForeground again
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(NOTIFICATION_ID, notification)
 
 //            saveData() // Save the steps persistently
+            CoroutineScope(Dispatchers.IO).launch {
+                updatePedometerDataInDB(currentSteps, caloriesBurned)
+            }
 
             serviceScope.launch {
                 pedometerRepository.updateSteps(currentSteps)
                 pedometerRepository.updateCalories(caloriesBurned)
+                pedometerRepository.updateDistance(getDistanceInMeters(steps = currentSteps))
+                pedometerRepository.updateTotalExerciseDuration(getTotalExerciseDuration())
             }
         }
     }
@@ -173,7 +194,7 @@ class PedometerForegroundService(): Service(), SensorEventListener {
     override fun onDestroy() {
         serviceScope.cancel()
         sensorManager?.unregisterListener(this)
-        Log.d(TAG, "resetData: \n totalSteps: ${totalSteps} \n previousTotalSteps: ${previousTotalSteps} ")
+        Log.d(TAG, "resetData: \n totalSteps: $totalSteps \n previousTotalSteps: $previousTotalSteps ")
         Log.i(TAG, "Service destroyed")
 
         super.onDestroy()
@@ -183,11 +204,29 @@ class PedometerForegroundService(): Service(), SensorEventListener {
         return null // Not a bound service
     }
 
-    private fun saveData() {
-        val sharedPreferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.putFloat("key1", previousTotalSteps)
-        editor.apply()
+    private suspend fun updatePedometerDataInDB(currentSteps: Int, caloriesBurned: Double) {
+        // add distance, duration later
+        pedometerData.steps = currentSteps
+        pedometerData.caloriesBurned = caloriesBurned
+        pedometerData.endTime = System.currentTimeMillis()
+        pedometerData.totalExerciseDuration = getTotalExerciseDuration()
+        pedometerData.distanceMeters = getDistanceInMeters(steps = currentSteps)
+        pedometerRepository.updatePedometerDataInDB(pedometerData)
+    }
+
+    private fun getTotalExerciseDuration(): Long {
+        return (pedometerData.endTime - pedometerData.startTime)
+    }
+
+    private suspend fun getDistanceInMeters(steps: Int): Double {
+        val personalInformation = settingRepository.getPersonalInformation()
+        if (personalInformation?.height != null) {
+            Log.d(TAG, "getDistanceInMeters: personal data height: ${personalInformation.height}")
+            return steps * ((personalInformation.height.toDouble() * 0.41)/100)
+        } else {
+            Log.d(TAG, "getDistanceInMeters: no personal data")
+            return steps * defaultStepLength
+        }
     }
 
     private fun loadData() {

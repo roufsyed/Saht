@@ -36,7 +36,6 @@ import com.rouf.saht.databinding.BottomsheetSaveHeartRateBinding
 import com.rouf.saht.databinding.FragmentHeartRateBinding
 import com.rouf.saht.heartRate.viewModel.HeartRateViewModel
 import com.rouf.saht.setting.SettingsViewModel
-import com.rouf.saht.setting.view.PersonalInformationActivity
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.coroutines.Dispatchers
@@ -391,9 +390,9 @@ class HeartRateFragment : Fragment() {
             )
         }
 
-        dialogBinding.chipSex.setOnClickListener {
+        dialogBinding.chipResting.setOnClickListener {
             dialogBinding.etActivityPerformed.setText(
-                dialogBinding.chipSex.text
+                dialogBinding.chipResting.text
             )
         }
 

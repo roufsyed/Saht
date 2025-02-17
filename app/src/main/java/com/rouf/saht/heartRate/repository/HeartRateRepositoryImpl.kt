@@ -1,6 +1,7 @@
 package com.rouf.saht.heartRate.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -34,6 +35,9 @@ import javax.inject.Singleton
 class HeartRateRepositoryImpl @Inject constructor(
     private val cameraProvider: ProcessCameraProvider
 ) : HeartRateRepository {
+
+    private val TAG: String = HeartRateRepositoryImpl::class.java.simpleName
+
     private val _heartRateFlow = MutableStateFlow<HeartRateData?>(null)
     private var camera: Camera? = null
     private val analyzer = CameraHeartRateAnalyzer()
@@ -88,6 +92,30 @@ class HeartRateRepositoryImpl @Inject constructor(
 
     override suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>? = withContext(Dispatchers.IO) {
         return@withContext Paper.book().read("heart_rate_monitor_data")
+    }
+
+    override suspend fun deleteHeartRateMonitorDataByPosition(position: Int): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val heartRateDataList: MutableList<HeartRateMonitorData>? = Paper.book().read("heart_rate_monitor_data")
+            Log.i(TAG, "deleteHeartRateMonitorDataByPosition: position -> $position")
+            Log.i(TAG, "deleteHeartRateMonitorDataByPosition: heartRateDataList -> $heartRateDataList")
+
+            if (position < 0 || position >= (heartRateDataList?.size
+                    ?: emptyList<HeartRateMonitorData>().size)
+            ) {
+                throw IndexOutOfBoundsException("Position out of bounds")
+            }
+
+            val updatedList = heartRateDataList?.filterIndexed { index, _ -> index != position }
+
+            updatedList?.let { Paper.book().write("heart_rate_monitor_data", it) }
+
+            Log.d(TAG, "deleteHeartRateMonitorDataByPosition: Successfully deleted entry at position $position")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteHeartRateMonitorDataByPosition: Error deleting heart rate monitor data", e)
+            false
+        }
     }
 }
 

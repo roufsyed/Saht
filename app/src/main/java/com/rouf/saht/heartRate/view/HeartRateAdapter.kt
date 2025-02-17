@@ -1,6 +1,7 @@
 package com.rouf.saht.heartRate.view
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
@@ -46,8 +47,23 @@ class HeartRateAdapter(private val context: Context) : RecyclerView.Adapter<Hear
             customizeChartAppearance(binding.lineChart)
             updateGraph(binding.lineChart, heartRateData)
         }
+
+        init {
+            itemView.setOnClickListener {
+                onItemClick(adapterPosition)
+            }
+        }
+
+        private fun onItemClick(position: Int) {
+            val context = itemView.context
+            val intent = Intent(context, HeartRateDetailActivity::class.java)
+            intent.putExtra("heartRateData", heartRateList[position])
+            intent.putExtra("position", position.toString())
+            context.startActivity(intent)
+        }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun customizeChartAppearance(lineChart: LineChart) {
         val textColorBasedOnDarkMode = if (isDarkModeEnabled())
             Color.WHITE
@@ -69,6 +85,15 @@ class HeartRateAdapter(private val context: Context) : RecyclerView.Adapter<Hear
 
         lineChart.axisRight.isEnabled = false
         lineChart.description.isEnabled = false
+        lineChart.setTouchEnabled(false)
+        lineChart.isFocusable = false
+        lineChart.isClickable = false
+        lineChart.isDragEnabled = false
+        lineChart.setScaleEnabled(false)
+        lineChart.isScaleXEnabled = false
+        lineChart.isScaleYEnabled = false
+        lineChart.isDoubleTapToZoomEnabled = false
+        lineChart.setPinchZoom(false)
     }
 
     private fun updateGraph(lineChart: LineChart, heartRateData: HeartRateMonitorData) {
@@ -86,7 +111,6 @@ class HeartRateAdapter(private val context: Context) : RecyclerView.Adapter<Hear
         dataSet.fillColor = Color.RED
         dataSet.setDrawCircles(false)
         dataSet.setDrawValues(false)
-
 
         val lineData = LineData(dataSet)
         lineChart.data = lineData

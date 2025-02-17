@@ -90,10 +90,10 @@
             app:closeIconVisible="false"/>
 
         <com.google.android.material.chip.Chip
-            android:id="@+id/chipSex"
+            android:id="@+id/chipResting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sex"
+            android:text="@string/resting"
             android:textColor="@color/white"
             app:chipBackgroundColor="@color/green_500"
             app:closeIconVisible="false"/>
