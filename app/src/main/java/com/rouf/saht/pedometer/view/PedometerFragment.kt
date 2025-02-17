@@ -186,9 +186,9 @@ class PedometerFragment : Fragment() {
             return@setOnLongClickListener true
         }
 
-        binding.ivHistory.setOnLongClickListener {
-//            loadData()
-            return@setOnLongClickListener true
+        binding.ivHistory.setOnClickListener() {
+            val intent = Intent(activity, PedometerHistoryActivity::class.java)
+            startActivity(intent)
         }
 
         binding.tvBmi.setOnClickListener {
