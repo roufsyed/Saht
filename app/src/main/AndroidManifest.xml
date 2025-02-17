@@ -28,8 +28,16 @@
         android:theme="@style/Theme.Saht"
         tools:targetApi="31">
         <activity
+            android:name=".pedometer.view.PedometerHisotryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".heartRate.view.HeartRateDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
             android:name=".heartRate.view.HeartRateHistoryActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".setting.view.HeartRateMonitorSettingsActivity"

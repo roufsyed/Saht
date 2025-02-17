@@ -18,6 +18,19 @@
         tools:layout="@layout/fragment_heart_rate" />
 
     <fragment
+        android:id="@+id/navigation_meditation"
+        android:name="com.rouf.saht.heartRate.view.HeartRateFragment"
+        android:label="@string/title_meditation"
+        tools:layout="@layout/fragment_meditation" />
+
+    <fragment
+        android:id="@+id/navigation_women_health"
+        android:name="com.rouf.saht.heartRate.view.HeartRateFragment"
+        android:label="@string/title_women_health"
+        tools:layout="@layout/fragment_women_health" />
+
+
+    <fragment
         android:id="@+id/navigation_settings"
         android:name="com.rouf.saht.setting.view.SettingsFragment"
         android:label="@string/title_settings"
