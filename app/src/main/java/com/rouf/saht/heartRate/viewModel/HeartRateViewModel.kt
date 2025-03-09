@@ -54,19 +54,14 @@ class HeartRateViewModel @Inject constructor(
     private val _heartRateMonitorData = MutableLiveData<List<HeartRateMonitorData>>()
     val heartRateMonitorData: LiveData<List<HeartRateMonitorData>> = _heartRateMonitorData
 
+    fun getHeartRateMonitorData() = viewModelScope.launch {
+        _heartRateMonitorData.value = monitorHeartRateUseCase.getHeartRateMonitorData()
+    }
+
     suspend fun saveHeartRateMonitorData(heartRateMonitorData: HeartRateMonitorData) {
         monitorHeartRateUseCase.saveHeartRateMonitorData(heartRateMonitorData)
     }
 
-    suspend fun getHeartRateMonitorData(): List<HeartRateMonitorData>? {
-        lateinit var data: List<HeartRateMonitorData>
-
-        viewModelScope.launch {
-            _heartRateMonitorData.value = monitorHeartRateUseCase.getHeartRateMonitorData() ?: listOf()
-        }
-
-        return monitorHeartRateUseCase.getHeartRateMonitorData() ?: listOf()
-    }
 
     suspend fun deleteHeartRateMonitorDataByPosition(position: Int): Boolean {
         return monitorHeartRateUseCase.deleteHeartRateMonitorDataByPosition(position)

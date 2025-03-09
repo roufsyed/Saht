@@ -25,35 +25,33 @@ class HeartRateHistoryActivity : AppCompatActivity() {
         binding = ActivityHeartRateHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        heartRateViewModel = ViewModelProvider(this@HeartRateHistoryActivity)[HeartRateViewModel::class.java]
+        heartRateViewModel =
+            ViewModelProvider(this@HeartRateHistoryActivity)[HeartRateViewModel::class.java]
 
-        getHeartRateData()
+
+        setupRecyclerView()
         observer()
-    }
-
-    private fun getHeartRateData() {
-        lifecycleScope.launch {
-            heartRateViewModel.getHeartRateMonitorData()
-
-            heartRateAdapter = HeartRateAdapter(this@HeartRateHistoryActivity)
-            binding.rvHeartRate.layoutManager = LinearLayoutManager(this@HeartRateHistoryActivity)
-            binding.rvHeartRate.adapter = heartRateAdapter
-        }
-    }
-
-    private fun observer() {
-        heartRateViewModel.heartRateMonitorData.observe(this@HeartRateHistoryActivity) { heartRateList ->
-            if (heartRateList.isNotEmpty()) {
-                binding.llEmptyView.isVisible = false
-                heartRateAdapter.submitList(heartRateList)
-            } else {
-                binding.llEmptyView.isVisible = true
-            }
-        }
     }
 
     override fun onResume() {
         super.onResume()
         getHeartRateData()
+    }
+
+    private fun setupRecyclerView() {
+        heartRateAdapter = HeartRateAdapter(this)
+        binding.rvHeartRate.layoutManager = LinearLayoutManager(this)
+        binding.rvHeartRate.adapter = heartRateAdapter
+    }
+
+    private fun getHeartRateData() {
+        heartRateViewModel.getHeartRateMonitorData()
+    }
+
+    private fun observer() {
+        heartRateViewModel.heartRateMonitorData.observe(this) { heartRateList ->
+            binding.llEmptyView.isVisible = heartRateList.isEmpty()
+            heartRateAdapter.submitList(heartRateList)
+        }
     }
 }

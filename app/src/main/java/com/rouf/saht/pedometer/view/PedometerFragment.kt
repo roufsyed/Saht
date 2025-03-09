@@ -52,6 +52,8 @@ class PedometerFragment : Fragment() {
     private lateinit var pedometerSensitivity: PedometerSensitivity
     private var activeState: Boolean = false
 
+    private var BMI_FLAG = false
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -102,6 +104,9 @@ class PedometerFragment : Fragment() {
         if (heightStr.isEmpty() || weightStr.isEmpty()) {
             binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data)
             binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500))
+
+            BMI_FLAG = false
+
             return
 
         } else {
@@ -122,6 +127,8 @@ class PedometerFragment : Fragment() {
             // Update UI
             binding.tvBmi.text = "Your BMI: $formattedBmi | Diagnosis: $bmiCategory"
             binding.tvBmi.setTextColor(categoryColor)
+
+            BMI_FLAG = true
         }
     }
 
@@ -187,8 +194,12 @@ class PedometerFragment : Fragment() {
         }
 
         binding.tvBmi.setOnClickListener {
-            val intent = Intent(activity, PersonalInformationActivity::class.java)
-            startActivity(intent)
+            if (BMI_FLAG) {
+                // TODO: create some flow later
+            } else {
+                val intent = Intent(activity, PersonalInformationActivity::class.java)
+                startActivity(intent)
+            }
         }
     }
 
