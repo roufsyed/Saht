@@ -99,13 +99,12 @@ class PedometerFragment : Fragment() {
         val weightStr = personalInformation.weight
 
         // Validate height and weight
-        if (heightStr.isNullOrEmpty() || weightStr.isNullOrEmpty()) {
+        if (heightStr.isEmpty() || weightStr.isEmpty()) {
             binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data)
             binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500))
             return
-        }
 
-        try {
+        } else {
             // Parse height and weight
             val height = heightStr.toDoubleOrNull()?.let { BMIUtils.cmToMeter(it) }
             val weight = weightStr.toDoubleOrNull()
@@ -123,10 +122,6 @@ class PedometerFragment : Fragment() {
             // Update UI
             binding.tvBmi.text = "Your BMI: $formattedBmi | Diagnosis: $bmiCategory"
             binding.tvBmi.setTextColor(categoryColor)
-        } catch (e: Exception) {
-            // Handle invalid data gracefully
-            binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data)
-            binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500))
         }
     }
 
