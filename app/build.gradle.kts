@@ -107,5 +107,8 @@ dependencies {
 
     // Graphs
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Gson
+    implementation("com.google.code.gson:gson:2.12.1")
 }
 

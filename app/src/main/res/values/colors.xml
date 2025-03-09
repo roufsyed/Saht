@@ -44,6 +44,6 @@
     <color name="edittext_border_light">#FF000000</color>  <!-- Red -->
 
     <!-- Dialog box -->
-    <color name="dialog_background_light">#388E3C</color>  <!-- Red -->
+    <color name="dialog_background_light">#A9A9A9</color>  <!-- Red -->
     <color name="dialog_background_dark">#3b3b3b</color>  <!-- Red -->
 </resources>

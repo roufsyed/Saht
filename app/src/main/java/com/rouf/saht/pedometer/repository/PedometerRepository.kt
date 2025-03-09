@@ -80,6 +80,16 @@ class PedometerRepository @Inject constructor() {
         return@withContext Paper.book().read("pedometer_data_list")
     }
 
+    suspend fun filterPedometerListByDateRange(fromDate: Long, toDate: Long): List<PedometerData>? {
+        val pedometerData: List<PedometerData>? = Paper.book().read<List<PedometerData>>("meditation_sessions", emptyList())
+
+        pedometerData.let { pedometerData ->
+            return pedometerData?.filter { data ->
+                data.timestamp in fromDate..toDate
+            }
+        }
+    }
+
     suspend fun deletePedometerDataByPosition(position: Int): Boolean = withContext(Dispatchers.IO) {
         try {
             val PedometerDataList: MutableList<HeartRateMonitorData>? = Paper.book().read("pedometer_data_list")

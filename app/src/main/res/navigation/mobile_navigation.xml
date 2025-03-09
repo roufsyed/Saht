@@ -23,12 +23,6 @@
         android:label="@string/title_meditation"
         tools:layout="@layout/fragment_meditation" />
 
-    <fragment
-        android:id="@+id/navigation_women_health"
-        android:name="com.rouf.saht.womenHealth.WomenHealthFragment"
-        android:label="@string/title_women_health"
-        tools:layout="@layout/fragment_women_health" />
-
 
     <fragment
         android:id="@+id/navigation_settings"

@@ -224,7 +224,7 @@ class PedometerForegroundService : Service(), SensorEventListener {
             Log.d(TAG, "getDistanceInMeters: personal data height: ${personalInformation.height}")
             return steps * ((personalInformation.height.toDouble() * 0.41)/100)
         } else {
-            Log.d(TAG, "getDistanceInMeters: no personal data")
+            Log.d(TAG, "getDistanceInMeters: no height data")
             return steps * defaultStepLength
         }
     }

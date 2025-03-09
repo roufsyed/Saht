@@ -17,11 +17,6 @@
         android:title="@string/title_meditation" />
 
     <item
-        android:id="@+id/navigation_women_health"
-        android:icon="@drawable/ic_menstruation"
-        android:title="@string/title_women_health" />
-
-    <item
         android:id="@+id/navigation_settings"
         android:icon="@drawable/ic_settings_24"
         android:title="@string/title_settings" />

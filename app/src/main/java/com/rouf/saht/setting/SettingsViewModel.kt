@@ -35,9 +35,9 @@ class SettingsViewModel @Inject constructor(
         return PersonalInformation(
             name = "",
             gender = Gender.MALE,
-            height = "0.0",
+            height = "",
             heightUnit = "cm",
-            weight = "0.0",
+            weight = "",
             weightUnit = "kg",
             selectedYear = 0,
             selectedMonth = 0,

@@ -100,8 +100,8 @@ class PedometerFragment : Fragment() {
 
         // Validate height and weight
         if (heightStr.isNullOrEmpty() || weightStr.isNullOrEmpty()) {
-            binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data) // Use a string resource for localization
-            binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500)) // Set error color
+            binding.tvBmi.text = "BMI: " + getString(R.string.invalid_data)
+            binding.tvBmi.setTextColor(requireContext().getColor(R.color.red_500))
             return
         }
 

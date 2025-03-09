@@ -9,6 +9,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--For taking backup of user progress-->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!--For Meditation sound playback-->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
